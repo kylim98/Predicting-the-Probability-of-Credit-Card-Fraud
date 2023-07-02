@@ -1,0 +1,55 @@
+credict <- read.csv('C:/Users/bsps3/OneDrive/桌面/creditcard(3).csv')
+credict$Class<-as.factor(credict$Class)
+
+train <- credict[1:199365,c('V1','V2','V3','V4','V5','V6','V7','V8','V9','V10','V11','V12','V13','V14','V15','V16','V17','V18','V19','V20','V21','V22','V23','V24','V25','V26','V27','V28','Amount','Class')]
+test <- credict[199366:284807,c('V1','V2','V3','V4','V5','V6','V7','V8','V9','V10','V11','V12','V13','V14','V15','V16','V17','V18','V19','V20','V21','V22','V23','V24','V25','V26','V27','V28','Amount','Class')]
+install.packages("ROSE")
+library(ROSE)
+table(credict$Class)
+
+f1<-Class~V1+V2+V3+V4+V5+V6+V7+V8+V9+V10+V11+V12+V13+V14+V15+V16+V17+V18+V19+V20+V21+V22+V23+V24+V25+V26+V27+V28+Amount
+new_train<-ovun.sample(f1, data=train, N=2304, seed=1, method='under')$data
+table(new_train$Class)
+決策樹 Decision Tree
+install.packages("rpart")
+install.packages("rpart.plot")
+install.packages("e1071")
+library(e1071)
+set.seed(1234)
+library(adabag)
+library(rpart)
+library(rpart.plot)
+rpart.tune<-tune.rpart(f1,data=new_train,minsplit=c(5,10,15,20),cp=c(0.005,0.008,0.01,0.012))
+summary(rpart.tune)
+credict.rpart<-rpart(f1,method="class",data=new_train,control=rpart.control(minsplit=5,cp=0.01))
+credict.rpart
+#rpart.plot(credict.rpart)
+
+train.predict <- predict(credict.rpart, type = "class")
+confusion.train <- table( new_train$Class, train.predict, deparse.level = 2)
+confusion.train
+(confusion.train[1,1]+confusion.train[2,2])/sum(confusion.train)*100
+test.predict <- predict(credict.rpart, test, type = "class")
+confusion.test <- table( test$Class, test.predict, deparse.level = 2)
+confusion.test
+(confusion.test[1,1]+confusion.test[2,2])/sum(confusion.test)*100
+隨機森林Random Forest
+install.packages("randomForest")
+library(randomForest)
+rf.tune<-tune.randomForest(Class~.,data = new_train,mtry = (2:5),ntree = c(100,300,500,1000))
+summary(rf.tune)
+rf.credict<-randomForest(Class~., data = new_train, ntree = 100,mtry = 4 ,important=FALSE)
+head(rf.credict$predicted)
+rf.credict$confusion
+head(rf.credict$votes) 
+importance(rf.credict)
+
+train.predict<-predict(rf.credict,train)
+confusion.matrix<-table(train$Class,train.predict,deparse.level = 2)
+(confusion.matrix[1,1]+confusion.matrix[2,2])/sum(confusion.matrix)*100
+test.predict<-predict(rf.credict,test)
+confusion.matrix<-table(test$Class,test.predict,deparse.level = 2)
+confusion.matrix
+#(confusion.matrix[1,1]+confusion.matrix[2,2])/sum(confusion.matrix)*100
+
+
